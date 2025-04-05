@@ -159,7 +159,7 @@ const Sidebar = () => {
           .map((channel) => {
             // For DMs, show the other user's name
             const otherUserId = channel.participants.find(id => id !== user?.id);
-            const otherUser = otherUserId ? DEMO_USERS[otherUserId] : null;
+            const otherUser = otherUserId && allUsers.find(u => u.id === otherUserId);
             const displayName = otherUser ? otherUser.username : channel.name;
             
             return (
