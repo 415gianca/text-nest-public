@@ -47,7 +47,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check if user is logged in
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        console.log("Auto-logged in from saved session:", parsedUser.username);
+      } catch (error) {
+        console.error("Error parsing saved user:", error);
+        localStorage.removeItem('user');
+      }
     }
     setLoading(false);
   }, []);
