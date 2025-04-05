@@ -37,9 +37,10 @@ interface ChatContextType {
   removeReaction: (messageId: string, emoji: string) => void;
   createChannel: (name: string, participants: string[], isPrivate: boolean) => void;
   setNickname: (channelId: string, userId: string, nickname: string) => void;
+  createDirectMessage: (recipientId: string) => void;
+  getAllUsers: () => User[];
 }
 
-// Mock chat data
 const DEMO_USERS: Record<string, User> = {
   "1": { 
     id: "1", 
@@ -129,7 +130,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentChannelId, setCurrentChannelId] = useState<string>("general");
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load channels from localStorage on initial render
   useEffect(() => {
     try {
       const savedChannels = localStorage.getItem('chatChannels');
@@ -147,7 +147,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsInitialized(true);
   }, []);
 
-  // Save channels to localStorage whenever they change
   useEffect(() => {
     if (isInitialized && channels.length > 0) {
       try {
@@ -300,7 +299,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Ensure creator is included in participants
     if (!participantIds.includes(user.id)) {
       participantIds.push(user.id);
     }
@@ -341,6 +339,49 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.success(`Nickname set to "${nickname}"`);
   };
 
+  const createDirectMessage = (recipientId: string) => {
+    if (!user) return;
+    
+    const existingChannel = channels.find(
+      channel => 
+        channel.type === 'direct' && 
+        channel.participants.includes(user.id) && 
+        channel.participants.includes(recipientId) &&
+        channel.participants.length === 2
+    );
+    
+    if (existingChannel) {
+      setCurrentChannelId(existingChannel.id);
+      return;
+    }
+
+    const recipient = DEMO_USERS[recipientId];
+    if (!recipient) {
+      toast.error("User not found");
+      return;
+    }
+
+    const channelName = `${user.username}-${recipient.username}`;
+    const dmChannel: Channel = {
+      id: generateId(),
+      name: channelName,
+      type: 'direct',
+      participants: [user.id, recipientId],
+      isPrivate: true,
+      creatorId: user.id,
+      nicknames: {},
+      messages: []
+    };
+
+    setChannels(prevChannels => [...prevChannels, dmChannel]);
+    setCurrentChannelId(dmChannel.id);
+    toast.success(`Started conversation with ${recipient.username}`);
+  };
+
+  const getAllUsers = (): User[] => {
+    return Object.values(DEMO_USERS);
+  };
+
   const value = {
     channels,
     currentChannel,
@@ -351,7 +392,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addReaction,
     removeReaction,
     createChannel,
-    setNickname
+    setNickname,
+    createDirectMessage,
+    getAllUsers
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

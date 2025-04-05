@@ -5,65 +5,117 @@ import { useAuth } from '@/providers/AuthProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Hash, Lock, Users } from 'lucide-react';
+import { PlusCircle, Hash, Lock, Users, MessageSquare } from 'lucide-react';
 
 const Sidebar = () => {
-  const { channels, currentChannel, setCurrentChannel, createChannel } = useChat();
+  const { channels, currentChannel, setCurrentChannel, createChannel, createDirectMessage, getAllUsers } = useChat();
   const { user, logout, isAdmin } = useAuth();
   const [newChannelName, setNewChannelName] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
+  const [isDMDialogOpen, setIsDMDialogOpen] = useState(false);
+  
+  const allUsers = getAllUsers();
 
   const handleCreateChannel = () => {
     if (!newChannelName.trim()) return;
     createChannel(newChannelName, [user!.id], isPrivate);
     setNewChannelName('');
     setIsPrivate(false);
-    setIsDialogOpen(false);
+    setIsChannelDialogOpen(false);
   };
 
   return (
     <div className="w-60 bg-discord-darker flex flex-col h-screen">
       <div className="p-4 text-xl font-bold border-b border-discord-darkest flex items-center justify-between">
         <span>TextNest</span>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-discord-light hover:text-white">
-              <PlusCircle className="h-5 w-5" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-discord-darker border-discord-darkest text-white">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold">Create Channel</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <Input
-                value={newChannelName}
-                onChange={(e) => setNewChannelName(e.target.value)}
-                placeholder="Channel name"
-                className="bg-discord-darkest border-none"
-              />
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="private-channel"
-                  checked={isPrivate}
-                  onChange={() => setIsPrivate(!isPrivate)}
-                  className="form-checkbox h-4 w-4 text-discord-primary"
-                />
-                <label htmlFor="private-channel" className="text-sm text-discord-light">
-                  Private Channel
-                </label>
-              </div>
-              <Button 
-                onClick={handleCreateChannel} 
-                className="w-full bg-discord-primary hover:bg-discord-primary/90"
-              >
-                Create Channel
+        <div className="flex space-x-1">
+          {/* Create Channel Dialog */}
+          <Dialog open={isChannelDialogOpen} onOpenChange={setIsChannelDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-discord-light hover:text-white" title="Create Channel">
+                <PlusCircle className="h-5 w-5" />
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="bg-discord-darker border-discord-darkest text-white">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-semibold">Create Channel</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <Input
+                  value={newChannelName}
+                  onChange={(e) => setNewChannelName(e.target.value)}
+                  placeholder="Channel name"
+                  className="bg-discord-darkest border-none"
+                />
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="private-channel"
+                    checked={isPrivate}
+                    onChange={() => setIsPrivate(!isPrivate)}
+                    className="form-checkbox h-4 w-4 text-discord-primary"
+                  />
+                  <label htmlFor="private-channel" className="text-sm text-discord-light">
+                    Private Channel
+                  </label>
+                </div>
+                <Button 
+                  onClick={handleCreateChannel} 
+                  className="w-full bg-discord-primary hover:bg-discord-primary/90"
+                >
+                  Create Channel
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          
+          {/* Create Direct Message Dialog */}
+          <Dialog open={isDMDialogOpen} onOpenChange={setIsDMDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-discord-light hover:text-white" title="New Direct Message">
+                <MessageSquare className="h-5 w-5" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-discord-darker border-discord-darkest text-white">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-semibold">New Message</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="text-sm text-discord-light mb-2">
+                  Select a user to message:
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {allUsers
+                    .filter(u => u.id !== user?.id) // Don't show current user
+                    .map(u => (
+                      <div 
+                        key={u.id} 
+                        className="flex items-center p-2 rounded hover:bg-discord-darkest cursor-pointer"
+                        onClick={() => {
+                          createDirectMessage(u.id);
+                          setIsDMDialogOpen(false);
+                        }}
+                      >
+                        <div className="relative mr-2">
+                          <img 
+                            src={u.avatar} 
+                            alt={u.username} 
+                            className="w-8 h-8 rounded-full"
+                          />
+                          <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-discord-darker ${
+                            u.status === 'online' ? 'bg-discord-success' : 'bg-yellow-500'
+                          }`}></span>
+                        </div>
+                        <span className="text-white">{u.username}</span>
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* User profile */}
@@ -96,19 +148,44 @@ const Sidebar = () => {
         </div>
       </div>
 
-      {/* Channels list */}
+      {/* Channels list with categories */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        <div className="text-discord-light uppercase text-xs font-semibold p-2">
+        {/* Direct Messages category */}
+        <div className="text-discord-light uppercase text-xs font-semibold p-2 flex justify-between items-center">
+          <span>Direct Messages</span>
+        </div>
+        {channels
+          .filter(channel => channel.type === 'direct' && channel.participants.includes(user?.id || ''))
+          .map((channel) => {
+            // For DMs, show the other user's name
+            const otherUserId = channel.participants.find(id => id !== user?.id);
+            const otherUser = otherUserId ? DEMO_USERS[otherUserId] : null;
+            const displayName = otherUser ? otherUser.username : channel.name;
+            
+            return (
+              <ChannelItem 
+                key={channel.id} 
+                channel={{...channel, name: displayName}}
+                isActive={currentChannel?.id === channel.id}
+                onClick={() => setCurrentChannel(channel.id)}
+              />
+            );
+          })}
+          
+        {/* Text Channels category */}
+        <div className="text-discord-light uppercase text-xs font-semibold p-2 mt-4">
           Text Channels
         </div>
-        {channels.map((channel) => (
-          <ChannelItem 
-            key={channel.id} 
-            channel={channel} 
-            isActive={currentChannel?.id === channel.id}
-            onClick={() => setCurrentChannel(channel.id)}
-          />
-        ))}
+        {channels
+          .filter(channel => channel.type === 'group')
+          .map((channel) => (
+            <ChannelItem 
+              key={channel.id} 
+              channel={channel} 
+              isActive={currentChannel?.id === channel.id}
+              onClick={() => setCurrentChannel(channel.id)}
+            />
+          ))}
       </div>
 
       {/* Admin panel link */}
