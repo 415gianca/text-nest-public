@@ -5,24 +5,42 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from '@/providers/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) return;
+    setErrorMessage('');
+    
+    if (!username.trim() || !password.trim()) {
+      setErrorMessage('Please enter both username and password');
+      return;
+    }
     
     setIsLoading(true);
-    const success = await login(username, password);
-    setIsLoading(false);
     
-    if (success) {
-      navigate('/chat');
+    try {
+      console.log("Attempting login with:", username, password);
+      const success = await login(username, password);
+      
+      if (success) {
+        toast.success('Login successful!');
+        navigate('/chat');
+      } else {
+        setErrorMessage('Invalid username or password');
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      setErrorMessage('An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -57,6 +75,20 @@ const LoginForm = () => {
               required
             />
           </div>
+          
+          {errorMessage && (
+            <div className="text-red-500 text-sm mt-2">{errorMessage}</div>
+          )}
+          
+          <div className="text-sm text-discord-light">
+            <p>Demo accounts:</p>
+            <ul className="list-disc pl-5 mt-1">
+              <li>admin / admin123</li>
+              <li>user1 / password</li>
+              <li>user2 / password</li>
+            </ul>
+          </div>
+          
           <Button 
             type="submit" 
             className="w-full bg-discord-primary hover:bg-discord-primary/80 text-white"

@@ -42,19 +42,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    // Mock login process
+    // Fix: Convert username to lowercase for case-insensitive comparison
+    const lowercaseUsername = username.toLowerCase();
+    
+    // Mock login process - search for user with case-insensitive username
     const userEntry = Object.entries(MOCK_USERS).find(
-      ([, user]) => user.username === username && user.password === password
+      ([, user]) => user.username.toLowerCase() === lowercaseUsername && user.password === password
     );
 
     if (userEntry) {
       const [id, userData] = userEntry;
       const newUser: User = {
         id,
-        username: userData.username,
+        username: userData.username, // Keep original username casing
         isAdmin: userData.isAdmin,
         status: 'online',
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`, // Generate avatar
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.username}`, // Generate avatar
       };
       setUser(newUser);
       localStorage.setItem('user', JSON.stringify(newUser));
@@ -62,6 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } else {
       toast.error("Invalid username or password");
+      console.log("Login failed. Provided:", { username, password }, "Available users:", MOCK_USERS);
       return false;
     }
   };
