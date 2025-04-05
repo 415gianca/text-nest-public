@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useChat, Message } from '@/providers/ChatProvider';
 import { useAuth } from '@/providers/AuthProvider';
@@ -25,9 +24,7 @@ const MessageList = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   
   useEffect(() => {
@@ -44,7 +41,7 @@ const MessageList = () => {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-discord-dark h-full overflow-hidden">
+    <div className="flex-1 flex flex-col bg-discord-dark h-full">
       <div className="channel-bar flex items-center">
         <span className="text-lg font-medium">#{currentChannel.name}</span>
         {currentChannel.isPrivate && (
@@ -54,24 +51,26 @@ const MessageList = () => {
         )}
       </div>
       
-      <ScrollArea className="flex-1 px-4 overflow-y-auto max-h-[calc(100vh-150px)]">
-        <div className="py-4 space-y-2">
-          {currentChannel.messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-discord-light">
-              <div className="text-5xl mb-4">👋</div>
-              <div className="text-xl font-medium">Welcome to #{currentChannel.name}!</div>
-              <div className="text-sm">This is the start of the channel.</div>
-            </div>
-          ) : (
-            currentChannel.messages.map((message) => (
-              <MessageItem key={message.id} message={message} />
-            ))
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
-      
-      <MessageInput />
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <ScrollArea className="flex-1 px-4" style={{ height: 'calc(100vh - 180px)' }}>
+          <div className="py-4 space-y-2">
+            {currentChannel.messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-discord-light">
+                <div className="text-5xl mb-4">👋</div>
+                <div className="text-xl font-medium">Welcome to #{currentChannel.name}!</div>
+                <div className="text-sm">This is the start of the channel.</div>
+              </div>
+            ) : (
+              currentChannel.messages.map((message) => (
+                <MessageItem key={message.id} message={message} />
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+        
+        <MessageInput />
+      </div>
     </div>
   );
 };
