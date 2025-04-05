@@ -1,5 +1,4 @@
-
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { useAuth, User } from './AuthProvider';
 import { generate as generateId } from 'shortid';
@@ -126,8 +125,40 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [channels, setChannels] = useState<Channel[]>(INITIAL_CHANNELS);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [currentChannelId, setCurrentChannelId] = useState<string>("general");
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load channels from localStorage on initial render
+  useEffect(() => {
+    try {
+      const savedChannels = localStorage.getItem('chatChannels');
+      if (savedChannels) {
+        setChannels(JSON.parse(savedChannels));
+        console.log("Loaded saved channels from localStorage");
+      } else {
+        setChannels(INITIAL_CHANNELS);
+        console.log("No saved channels found, using initial channels");
+      }
+    } catch (error) {
+      console.error("Error loading channels from localStorage:", error);
+      setChannels(INITIAL_CHANNELS);
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Save channels to localStorage whenever they change
+  useEffect(() => {
+    if (isInitialized && channels.length > 0) {
+      try {
+        localStorage.setItem('chatChannels', JSON.stringify(channels));
+        console.log("Saved channels to localStorage");
+      } catch (error) {
+        console.error("Error saving channels to localStorage:", error);
+        toast.error("Failed to save chat data");
+      }
+    }
+  }, [channels, isInitialized]);
 
   const currentChannel = channels.find(channel => channel.id === currentChannelId) || null;
 
