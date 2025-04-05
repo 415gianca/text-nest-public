@@ -16,9 +16,9 @@ const Index = () => {
   }, [isAuthenticated, navigate]);
   
   return (
-    <div className="min-h-screen bg-discord-dark">
+    <div className="min-h-screen bg-discord-dark overflow-y-auto">
       {/* Hero section */}
-      <div className="relative overflow-hidden">
+      <div className="relative">
         <div className="bg-gradient-to-b from-discord-primary/20 to-discord-dark pt-16 pb-24">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
