@@ -26,6 +26,17 @@ const MOCK_USERS: Record<string, { username: string; password: string; isAdmin: 
   "3": { username: "user2", password: "password", isAdmin: false },
 };
 
+// Try to load saved users from localStorage
+try {
+  const savedUsers = localStorage.getItem('mockUsers');
+  if (savedUsers) {
+    const parsedUsers = JSON.parse(savedUsers);
+    Object.assign(MOCK_USERS, parsedUsers);
+  }
+} catch (error) {
+  console.error("Error loading saved users:", error);
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -90,6 +101,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password,
       isAdmin: false,
     };
+
+    // Save updated users to localStorage
+    try {
+      localStorage.setItem('mockUsers', JSON.stringify(MOCK_USERS));
+    } catch (error) {
+      console.error("Error saving users:", error);
+    }
 
     // Automatically login
     const newUser: User = {

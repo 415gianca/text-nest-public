@@ -12,7 +12,7 @@ const LoginForm = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,6 +39,27 @@ const LoginForm = () => {
     } catch (error) {
       console.error("Login error:", error);
       setErrorMessage('An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleQuickRegister = async () => {
+    if (!username.trim() || !password.trim()) {
+      setErrorMessage('Please enter both username and password to register');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const success = await register(username, password);
+      if (success) {
+        toast.success('Account created and logged in!');
+        navigate('/chat');
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      setErrorMessage('An error occurred during registration');
     } finally {
       setIsLoading(false);
     }
@@ -101,6 +122,22 @@ const LoginForm = () => {
               </div>
             ) : (
               'Sign in'
+            )}
+          </Button>
+          
+          <Button 
+            type="button"
+            onClick={handleQuickRegister}
+            className="w-full bg-green-600 hover:bg-green-700 text-white mt-2"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Processing...</span>
+              </div>
+            ) : (
+              'Quick Register & Login'
             )}
           </Button>
         </form>
