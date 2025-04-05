@@ -1,9 +1,10 @@
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useChat, Message } from '@/providers/ChatProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Heart, ThumbsUp, Smile, Trash2, Edit2, Save, X 
 } from 'lucide-react';
@@ -21,11 +22,15 @@ const REACTIONS = [
 
 const MessageList = () => {
   const { currentChannel } = useChat();
-  const [scrollPosition, setScrollPosition] = useState(0);
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    setScrollPosition(e.currentTarget.scrollTop);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+  
+  useEffect(() => {
+    scrollToBottom();
+  }, [currentChannel?.messages]);
 
   if (!currentChannel) {
     return (
@@ -36,7 +41,7 @@ const MessageList = () => {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-discord-dark">
+    <div className="flex-1 flex flex-col bg-discord-dark h-screen overflow-hidden">
       <div className="channel-bar flex items-center">
         <span className="text-lg font-medium">#{currentChannel.name}</span>
         {currentChannel.isPrivate && (
@@ -46,22 +51,22 @@ const MessageList = () => {
         )}
       </div>
       
-      <div 
-        className="flex-1 overflow-y-auto p-4 space-y-2"
-        onScroll={handleScroll}
-      >
-        {currentChannel.messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-discord-light">
-            <div className="text-5xl mb-4">👋</div>
-            <div className="text-xl font-medium">Welcome to #{currentChannel.name}!</div>
-            <div className="text-sm">This is the start of the channel.</div>
-          </div>
-        ) : (
-          currentChannel.messages.map((message) => (
-            <MessageItem key={message.id} message={message} />
-          ))
-        )}
-      </div>
+      <ScrollArea className="flex-1 px-4">
+        <div className="py-4 space-y-2">
+          {currentChannel.messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-discord-light">
+              <div className="text-5xl mb-4">👋</div>
+              <div className="text-xl font-medium">Welcome to #{currentChannel.name}!</div>
+              <div className="text-sm">This is the start of the channel.</div>
+            </div>
+          ) : (
+            currentChannel.messages.map((message) => (
+              <MessageItem key={message.id} message={message} />
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
       
       <MessageInput />
     </div>
@@ -252,7 +257,7 @@ const MessageInput = () => {
   };
 
   return (
-    <div className="p-4 bg-discord-dark">
+    <div className="p-4 bg-discord-dark border-t border-discord-darker">
       <form onSubmit={handleSubmit} className="flex items-center space-x-2">
         <input
           type="text"
