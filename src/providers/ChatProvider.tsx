@@ -50,6 +50,11 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, getAllUsers: getAuthUsers } = useAuth();
   
+  // Define getAllUsers function first before using it
+  const getAllUsers = () => {
+    return getAuthUsers();
+  };
+  
   const {
     channels,
     setChannels,
@@ -73,10 +78,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setNickname,
     createDirectMessage
   } = useChannelManagement(user, channels, setChannels, setCurrentChannelId, getAllUsers);
-
-  const getAllUsers = () => {
-    return getAuthUsers();
-  };
 
   const value = {
     channels,
