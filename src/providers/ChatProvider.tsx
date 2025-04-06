@@ -50,7 +50,7 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, getAllUsers: getAuthUsers } = useAuth();
   
-  // Define getAllUsers function first before using it
+  // Define getAllUsers function before using it
   const getAllUsers = () => {
     return getAuthUsers();
   };

@@ -17,6 +17,9 @@ const Footer = () => {
           <ExternalLink className="ml-1 h-3 w-3" />
         </a>
       </div>
+      <div className="mt-1 text-xs">
+        💬 Text Nest 🐣 - A simple messaging platform
+      </div>
     </footer>
   );
 };

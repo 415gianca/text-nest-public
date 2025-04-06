@@ -2,7 +2,7 @@
 import { useAuth } from '@/providers/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Plus } from 'lucide-react';
+import { Plus, MessageSquare, Users } from 'lucide-react';
 import { useState } from 'react';
 import ChannelCreationDialog from './ChannelCreationDialog';
 import DirectMessageDialog from './DirectMessageDialog';
@@ -40,14 +40,14 @@ const SidebarHeader = ({ isMobileSidebar = false }) => {
         )}
       </div>
       
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <Button 
           variant="ghost" 
           size="sm"
-          onClick={() => navigate('/chat')}
+          onClick={() => navigate('/profile')}
           className="text-discord-light hover:text-white hover:bg-discord-primary/20"
         >
-          Chat
+          Profile
         </Button>
         <Button 
           variant="ghost" 
@@ -57,6 +57,30 @@ const SidebarHeader = ({ isMobileSidebar = false }) => {
         >
           Logout
         </Button>
+      </div>
+      
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsChannelDialogOpen(true)}
+            className="flex items-center space-x-1 text-discord-light hover:text-white hover:bg-discord-primary/20"
+          >
+            <Users className="h-4 w-4" />
+            <span>New Channel</span>
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsDMDialogOpen(true)}
+            className="flex items-center space-x-1 text-discord-light hover:text-white hover:bg-discord-primary/20"
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span>New DM</span>
+          </Button>
+        </div>
       </div>
 
       <ChannelCreationDialog open={isChannelDialogOpen} setOpen={setIsChannelDialogOpen} type="group" />

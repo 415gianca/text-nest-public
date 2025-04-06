@@ -1,17 +1,13 @@
-import { useState, useEffect } from 'react';
+
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from '@/providers/AuthProvider';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
-
-// Define the interface for admin invite verification response
-interface AdminInviteVerification {
-  is_valid: boolean;
-  email: string;
-}
+import AdminInviteVerifier from './AdminInviteVerifier';
 
 const RegisterForm = () => {
   const [email, setEmail] = useState('');
@@ -24,42 +20,12 @@ const RegisterForm = () => {
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   
-  // Check for admin invite token in URL
-  useEffect(() => {
-    const token = searchParams.get('admin_invite');
-    if (token) {
-      verifyAdminInvite(token);
-    }
-  }, [searchParams]);
-  
-  // Verify admin invite token
-  const verifyAdminInvite = async (token: string) => {
-    try {
-      const { data, error } = await supabase
-        .rpc('verify_admin_invite', { invite_token: token })
-        .returns<AdminInviteVerification[]>();
-      
-      if (error) {
-        console.error("Admin invite verification error:", error);
-        toast.error("Invalid or expired admin invitation");
-        return;
-      }
-      
-      if (data && Array.isArray(data) && data.length > 0 && data[0].is_valid) {
-        setIsAdminInvite(true);
-        setAdminInviteToken(token);
-        setAdminEmail(data[0].email);
-        setEmail(data[0].email);
-        toast.success("Admin invitation verified!");
-      } else {
-        toast.error("Invalid or expired admin invitation");
-      }
-    } catch (err) {
-      console.error("Failed to verify admin invite:", err);
-      toast.error("Failed to verify admin invitation");
-    }
+  const handleAdminInviteVerified = (verifiedEmail: string, token: string) => {
+    setIsAdminInvite(true);
+    setAdminInviteToken(token);
+    setAdminEmail(verifiedEmail);
+    setEmail(verifiedEmail);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -146,87 +112,90 @@ const RegisterForm = () => {
   };
 
   return (
-    <Card className="w-[350px] bg-discord-darker border-discord-primary/20">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">
-          {isAdminInvite ? 'Create Admin Account' : 'Create an account'}
-        </CardTitle>
-        <CardDescription className="text-center text-discord-light">
-          {isAdminInvite 
-            ? 'Complete your admin registration' 
-            : 'Enter your email and password to register'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Input
-              id="email"
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-discord-darkest border-none text-white"
-              disabled={isAdminInvite && adminEmail !== null}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Input
-              id="password"
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-discord-darkest border-none text-white"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Input
-              id="confirmPassword"
-              type="password"
-              placeholder="Confirm Password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="bg-discord-darkest border-none text-white"
-              required
-            />
-          </div>
-          
-          {isAdminInvite && (
-            <div className="text-discord-primary text-sm p-2 bg-discord-primary/10 rounded-md">
-              You are registering as an admin user. You'll have access to admin features.
+    <>
+      <AdminInviteVerifier onVerified={handleAdminInviteVerified} />
+      <Card className="w-[350px] bg-discord-darker border-discord-primary/20">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center">
+            {isAdminInvite ? 'Create Admin Account' : 'Create an account'}
+          </CardTitle>
+          <CardDescription className="text-center text-discord-light">
+            {isAdminInvite 
+              ? 'Complete your admin registration' 
+              : 'Enter your email and password to register'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Input
+                id="email"
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-discord-darkest border-none text-white"
+                disabled={isAdminInvite && adminEmail !== null}
+                required
+              />
             </div>
-          )}
-          
-          {error && (
-            <div className="text-discord-danger text-sm p-2 bg-discord-danger/10 rounded-md">
-              {error}
+            <div className="space-y-2">
+              <Input
+                id="password"
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="bg-discord-darkest border-none text-white"
+                required
+              />
             </div>
-          )}
-          <Button 
-            type="submit" 
-            className="w-full bg-discord-primary hover:bg-discord-primary/80 text-white"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Creating account...</span>
+            <div className="space-y-2">
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="bg-discord-darkest border-none text-white"
+                required
+              />
+            </div>
+            
+            {isAdminInvite && (
+              <div className="text-discord-primary text-sm p-2 bg-discord-primary/10 rounded-md">
+                You are registering as an admin user. You'll have access to admin features.
               </div>
-            ) : (
-              isAdminInvite ? 'Create Admin Account' : 'Create Account'
             )}
-          </Button>
-        </form>
-      </CardContent>
-      <CardFooter className="flex flex-col space-y-4">
-        <div className="text-sm text-center text-discord-light">
-          Already have an account? <a onClick={() => navigate('/login')} className="underline text-discord-primary cursor-pointer">Sign in</a>
-        </div>
-      </CardFooter>
-    </Card>
+            
+            {error && (
+              <div className="text-discord-danger text-sm p-2 bg-discord-danger/10 rounded-md">
+                {error}
+              </div>
+            )}
+            <Button 
+              type="submit" 
+              className="w-full bg-discord-primary hover:bg-discord-primary/80 text-white"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Creating account...</span>
+                </div>
+              ) : (
+                isAdminInvite ? 'Create Admin Account' : 'Create Account'
+              )}
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-4">
+          <div className="text-sm text-center text-discord-light">
+            Already have an account? <a onClick={() => navigate('/login')} className="underline text-discord-primary cursor-pointer">Sign in</a>
+          </div>
+        </CardFooter>
+      </Card>
+    </>
   );
 };
 
