@@ -38,9 +38,10 @@ const RegisterForm = () => {
   // Verify admin invite token
   const verifyAdminInvite = async (token: string) => {
     try {
-      const { data, error } = await supabase.rpc<AdminInviteVerification[]>('verify_admin_invite', {
-        invite_token: token
-      });
+      const { data, error } = await supabase.rpc<AdminInviteVerification>(
+        'verify_admin_invite',
+        { invite_token: token }
+      );
       
       if (error) {
         console.error("Admin invite verification error:", error);
@@ -48,7 +49,7 @@ const RegisterForm = () => {
         return;
       }
       
-      if (data && data.length > 0 && data[0].is_valid) {
+      if (data && Array.isArray(data) && data.length > 0 && data[0].is_valid) {
         setIsAdminInvite(true);
         setAdminInviteToken(token);
         setAdminEmail(data[0].email);
