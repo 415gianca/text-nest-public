@@ -14,6 +14,11 @@ interface AdminInviteVerification {
   email: string;
 }
 
+// Define parameter interface for the RPC call
+interface VerifyAdminInviteParams {
+  invite_token: string;
+}
+
 const RegisterForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +43,7 @@ const RegisterForm = () => {
   // Verify admin invite token
   const verifyAdminInvite = async (token: string) => {
     try {
-      const { data, error } = await supabase.rpc<AdminInviteVerification>(
+      const { data, error } = await supabase.rpc<AdminInviteVerification, VerifyAdminInviteParams>(
         'verify_admin_invite',
         { invite_token: token }
       );
