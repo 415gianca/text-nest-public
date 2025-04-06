@@ -14,65 +14,46 @@ import Footer from '@/components/common/Footer';
 
 const Profile = () => {
   const { userId } = useParams();
-  const { user: currentUser, isAuthenticated } = useAuth();
+  const { user: currentUser, getAllUsers } = useAuth();
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   
-  const isOwnProfile = currentUser?.id === profileUser?.id || (!userId && currentUser);
-  
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-
     const fetchUserProfile = async () => {
       setIsLoading(true);
       try {
-        const targetId = userId || currentUser?.id;
-        
-        if (!targetId) {
-          setIsLoading(false);
-          return;
-        }
-        
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', targetId)
-          .single();
+        if (userId) {
+          const allUsers = getAllUsers();
+          const foundUser = allUsers.find(u => u.id === userId);
           
-        if (error) {
-          console.error("Error fetching profile:", error);
-          toast.error("Failed to load user profile");
-          navigate('/chat');
-          return;
-        }
-        
-        if (data) {
-          const userData: User = {
-            id: data.id,
-            username: data.username,
-            isAdmin: data.is_admin,
-            status: (data.status as 'online' | 'idle' | 'offline') || 'online',
-            avatar: data.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.username}`,
-          };
-          setProfileUser(userData);
+          if (foundUser) {
+            setProfileUser(foundUser);
+          } else {
+            toast.error("User not found");
+            navigate('/chat');
+          }
+        } else if (currentUser) {
+          setProfileUser(currentUser);
+        } else {
+          navigate('/login');
         }
       } catch (err) {
         console.error("Error:", err);
         toast.error("An error occurred while loading the profile");
+        navigate('/chat');
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchUserProfile();
-  }, [userId, currentUser, isAuthenticated, navigate]);
+  }, [userId, currentUser, navigate, getAllUsers]);
 
+  const isOwnProfile = currentUser?.id === profileUser?.id || (!userId && currentUser);
+  
   const handleEditToggle = () => {
     setIsEditing(!isEditing);
   };

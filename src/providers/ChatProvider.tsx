@@ -60,7 +60,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setChannels,
     currentChannelId,
     setCurrentChannelId,
-    getAllUsers: getSupabaseUsers
   } = useSupabaseChat(user);
   
   const {

@@ -26,11 +26,9 @@ const Sidebar = () => {
       <SidebarHeader isMobileSidebar={isMobile} />
       <div className="flex-1 overflow-y-auto">
         <div className="px-2 py-4">
-          <h2 className="px-2 mb-2 text-xs font-semibold uppercase text-discord-light">Direct Messages</h2>
           <ChannelList type="direct" currentUser={user} />
         </div>
         <div className="px-2 py-4">
-          <h2 className="px-2 mb-2 text-xs font-semibold uppercase text-discord-light">Channels</h2>
           <ChannelList type="group" currentUser={user} />
         </div>
       </div>
@@ -71,7 +69,8 @@ const Sidebar = () => {
         {isCollapsed && (
           <div className="flex flex-col items-center py-4 space-y-4">
             <Button 
-              variant="ghost" 
+              variant="ghost"
+
               size="icon"
               className="text-discord-light hover:bg-discord-primary/20 hover:text-white"
               onClick={() => setCurrentChannel('admin')}

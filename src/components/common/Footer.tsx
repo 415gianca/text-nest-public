@@ -4,19 +4,19 @@ import { ExternalLink } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="py-4 px-4 text-center text-discord-light">
-      <p className="flex items-center justify-center gap-1">
-        Built by 
+    <footer className="py-4 text-center text-discord-light text-sm">
+      <div className="flex items-center justify-center space-x-1">
+        <span>Built by</span>
         <a 
           href="https://github.com/415gianca" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-discord-primary hover:text-white transition-colors"
+          className="text-discord-primary hover:text-discord-primary/80 flex items-center"
         >
-          415Gianca⚡ 
-          <ExternalLink size={14} />
+          415Gianca⚡
+          <ExternalLink className="ml-1 h-3 w-3" />
         </a>
-      </p>
+      </div>
     </footer>
   );
 };
