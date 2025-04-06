@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from "sonner";
+import { supabase } from '@/integrations/supabase/client';
 
 export interface User {
   id: string;
@@ -19,24 +20,6 @@ interface AuthContextType {
   logout: () => void;
 }
 
-// Mock user database for demo purposes
-const MOCK_USERS: Record<string, { username: string; password: string; isAdmin: boolean }> = {
-  "1": { username: "admin", password: "admin123", isAdmin: true },
-  "2": { username: "user1", password: "password", isAdmin: false },
-  "3": { username: "user2", password: "password", isAdmin: false },
-};
-
-// Try to load saved users from localStorage
-try {
-  const savedUsers = localStorage.getItem('mockUsers');
-  if (savedUsers) {
-    const parsedUsers = JSON.parse(savedUsers);
-    Object.assign(MOCK_USERS, parsedUsers);
-  }
-} catch (error) {
-  console.error("Error loading saved users:", error);
-}
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -44,94 +27,153 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        console.log("Auto-logged in from saved session:", parsedUser.username);
-      } catch (error) {
-        console.error("Error parsing saved user:", error);
-        localStorage.removeItem('user');
+    // Check if user is logged in via Supabase
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        try {
+          // Get the user profile from Supabase
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (error) throw error;
+          
+          if (profile) {
+            const userData: User = {
+              id: profile.id,
+              username: profile.username,
+              isAdmin: profile.is_admin,
+              status: profile.status as 'online' | 'idle' | 'offline' || 'online',
+              avatar: profile.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username}`,
+            };
+            
+            setUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+          localStorage.removeItem('user');
+        }
+      } else {
+        // Fallback to localStorage for demo purposes
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          try {
+            const parsedUser = JSON.parse(savedUser);
+            setUser(parsedUser);
+          } catch (error) {
+            console.error("Error parsing saved user:", error);
+            localStorage.removeItem('user');
+          }
+        }
       }
-    }
-    setLoading(false);
+      
+      setLoading(false);
+    };
+    
+    getUser();
+    
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (error) {
+            console.error("Error fetching user profile after sign in:", error);
+            return;
+          }
+          
+          if (profile) {
+            const userData: User = {
+              id: profile.id,
+              username: profile.username,
+              isAdmin: profile.is_admin,
+              status: profile.status as 'online' | 'idle' | 'offline' || 'online',
+              avatar: profile.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username}`,
+            };
+            
+            setUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          localStorage.removeItem('user');
+        }
+      }
+    );
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
-    // Fix: Convert username to lowercase for case-insensitive comparison
-    const lowercaseUsername = username.toLowerCase();
-    
-    // Mock login process - search for user with case-insensitive username
-    const userEntry = Object.entries(MOCK_USERS).find(
-      ([, user]) => user.username.toLowerCase() === lowercaseUsername && user.password === password
-    );
-
-    if (userEntry) {
-      const [id, userData] = userEntry;
-      const newUser: User = {
-        id,
-        username: userData.username, // Keep original username casing
-        isAdmin: userData.isAdmin,
-        status: 'online',
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.username}`, // Generate avatar
-      };
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      
       toast.success("Logged in successfully!");
       return true;
-    } else {
-      toast.error("Invalid username or password");
-      console.log("Login failed. Provided:", { username, password }, "Available users:", MOCK_USERS);
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast.error(error.message || "An unexpected error occurred");
       return false;
     }
   };
 
-  const register = async (username: string, password: string): Promise<boolean> => {
-    // Check if username exists
-    const exists = Object.values(MOCK_USERS).some(
-      (user) => user.username.toLowerCase() === username.toLowerCase()
-    );
-
-    if (exists) {
-      toast.error("Username already exists");
-      return false;
-    }
-
-    // Generate a new ID (would be handled by a DB in production)
-    const newId = String(Object.keys(MOCK_USERS).length + 1);
-    
-    // Add user to mock database
-    MOCK_USERS[newId] = {
-      username,
-      password,
-      isAdmin: false,
-    };
-
-    // Save updated users to localStorage
+  const register = async (email: string, password: string): Promise<boolean> => {
     try {
-      localStorage.setItem('mockUsers', JSON.stringify(MOCK_USERS));
-    } catch (error) {
-      console.error("Error saving users:", error);
+      // Extract username from email (before the @ symbol)
+      const username = email.split('@')[0];
+      
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username: username,
+          }
+        }
+      });
+      
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      
+      toast.success("Account created successfully!");
+      return true;
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      toast.error(error.message || "An unexpected error occurred");
+      return false;
     }
-
-    // Automatically login
-    const newUser: User = {
-      id: newId,
-      username,
-      isAdmin: false,
-      status: 'online',
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-    };
-    
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    toast.success("Account created successfully!");
-    return true;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    
     setUser(null);
     localStorage.removeItem('user');
     toast.info("Logged out");

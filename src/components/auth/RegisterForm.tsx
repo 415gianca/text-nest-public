@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 const RegisterForm = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,8 +19,13 @@ const RegisterForm = () => {
     e.preventDefault();
     setError('');
     
-    if (!username || !password) {
+    if (!email || !password) {
       setError('All fields are required');
+      return;
+    }
+    
+    if (!email.includes('@')) {
+      setError('Please enter a valid email address');
       return;
     }
     
@@ -35,7 +40,7 @@ const RegisterForm = () => {
     }
     
     setIsLoading(true);
-    const success = await register(username, password);
+    const success = await register(email, password);
     setIsLoading(false);
     
     if (success) {
@@ -48,17 +53,18 @@ const RegisterForm = () => {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl text-center">Create an account</CardTitle>
         <CardDescription className="text-center text-discord-light">
-          Enter your username and password to register
+          Enter your email and password to register
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Input
-              id="username"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="email"
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="bg-discord-darkest border-none text-white"
               required
             />

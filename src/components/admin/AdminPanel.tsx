@@ -1,26 +1,46 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/providers/AuthProvider';
-import { useChat } from '@/providers/ChatProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { User, UserX, ShieldAlert } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-
-// Mock users for the admin panel
-const MOCK_USERS = [
-  { id: "2", username: "user1", isAdmin: false, status: 'online' },
-  { id: "3", username: "user2", isAdmin: false, status: 'idle' },
-  { id: "4", username: "user3", isAdmin: false, status: 'offline' },
-  { id: "5", username: "user4", isAdmin: false, status: 'online' },
-];
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminPanel = () => {
   const { isAdmin } = useAuth();
-  const [users, setUsers] = useState(MOCK_USERS);
+  const [users, setUsers] = useState<any[]>([]);
   const [bannedUsers, setBannedUsers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('username');
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          setUsers(data.filter(user => !user.is_admin));
+        }
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        toast.error("Failed to load users");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (isAdmin) {
+      fetchUsers();
+    }
+  }, [isAdmin]);
 
   if (!isAdmin) {
     return (
@@ -36,13 +56,27 @@ const AdminPanel = () => {
     toast.success(`User ${username} has been banned`);
   };
 
-  const handlePromoteToAdmin = (userId: string, username: string) => {
-    setUsers((prev) =>
-      prev.map((user) =>
-        user.id === userId ? { ...user, isAdmin: true } : user
-      )
-    );
-    toast.success(`User ${username} has been promoted to admin`);
+  const handlePromoteToAdmin = async (userId: string, username: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_admin: true })
+        .eq('id', userId);
+        
+      if (error) {
+        throw error;
+      }
+      
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === userId ? { ...user, is_admin: true } : user
+        )
+      );
+      toast.success(`User ${username} has been promoted to admin`);
+    } catch (error) {
+      console.error("Error promoting user:", error);
+      toast.error("Failed to promote user");
+    }
   };
 
   const filteredUsers = users.filter((user) =>
@@ -68,70 +102,78 @@ const AdminPanel = () => {
             />
           </div>
 
-          <div className="overflow-hidden rounded-md border border-discord-darkest">
-            <table className="w-full text-left">
-              <thead className="bg-discord-darkest">
-                <tr>
-                  <th className="p-3 text-discord-light font-medium">Username</th>
-                  <th className="p-3 text-discord-light font-medium">Status</th>
-                  <th className="p-3 text-discord-light font-medium">Role</th>
-                  <th className="p-3 text-discord-light font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-discord-darkest">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="bg-discord-darker hover:bg-discord-dark">
-                    <td className="p-3 text-white">{user.username}</td>
-                    <td className="p-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                        user.status === 'online' 
-                          ? 'bg-discord-success/20 text-discord-success' 
-                          : user.status === 'idle'
-                          ? 'bg-yellow-500/20 text-yellow-500'
-                          : 'bg-gray-500/20 text-gray-500'
-                      }`}>
-                        {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="p-3 text-discord-light">
-                      {user.isAdmin ? 'Admin' : 'User'}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex space-x-2">
-                        {!user.isAdmin && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePromoteToAdmin(user.id, user.username)}
-                            className="h-8 px-2 text-discord-primary border-discord-primary hover:bg-discord-primary/20"
-                          >
-                            <ShieldAlert className="h-4 w-4 mr-1" />
-                            Promote
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleBanUser(user.id, user.username)}
-                          className="h-8 px-2 text-discord-danger border-discord-danger hover:bg-discord-danger/20"
-                        >
-                          <UserX className="h-4 w-4 mr-1" />
-                          Ban
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filteredUsers.length === 0 && (
+          {loading ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-discord-primary mx-auto"></div>
+              <p className="mt-2 text-discord-light">Loading users...</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-md border border-discord-darkest">
+              <table className="w-full text-left">
+                <thead className="bg-discord-darkest">
                   <tr>
-                    <td colSpan={4} className="p-3 text-center text-discord-light">
-                      No users found
-                    </td>
+                    <th className="p-3 text-discord-light font-medium">Username</th>
+                    <th className="p-3 text-discord-light font-medium">Status</th>
+                    <th className="p-3 text-discord-light font-medium">Role</th>
+                    <th className="p-3 text-discord-light font-medium">Actions</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-discord-darkest">
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
+                      <tr key={user.id} className="bg-discord-darker hover:bg-discord-dark">
+                        <td className="p-3 text-white">{user.username}</td>
+                        <td className="p-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            user.status === 'online' 
+                              ? 'bg-discord-success/20 text-discord-success' 
+                              : user.status === 'idle'
+                              ? 'bg-yellow-500/20 text-yellow-500'
+                              : 'bg-gray-500/20 text-gray-500'
+                          }`}>
+                            {user.status ? user.status.charAt(0).toUpperCase() + user.status.slice(1) : 'Offline'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-discord-light">
+                          {user.is_admin ? 'Admin' : 'User'}
+                        </td>
+                        <td className="p-3">
+                          <div className="flex space-x-2">
+                            {!user.is_admin && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePromoteToAdmin(user.id, user.username)}
+                                className="h-8 px-2 text-discord-primary border-discord-primary hover:bg-discord-primary/20"
+                              >
+                                <ShieldAlert className="h-4 w-4 mr-1" />
+                                Promote
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleBanUser(user.id, user.username)}
+                              className="h-8 px-2 text-discord-danger border-discord-danger hover:bg-discord-danger/20"
+                            >
+                              <UserX className="h-4 w-4 mr-1" />
+                              Ban
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="p-3 text-center text-discord-light">
+                        No users found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <div className="bg-discord-darker rounded-md p-4">
@@ -139,7 +181,7 @@ const AdminPanel = () => {
           {bannedUsers.length > 0 ? (
             <div className="space-y-2">
               {bannedUsers.map((userId) => {
-                const user = MOCK_USERS.find((u) => u.id === userId);
+                const user = users.find((u) => u.id === userId);
                 return (
                   <div
                     key={userId}
