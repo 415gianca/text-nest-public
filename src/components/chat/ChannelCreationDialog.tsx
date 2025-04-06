@@ -1,66 +1,140 @@
-
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useChat } from '@/providers/ChatProvider';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { PlusCircle } from 'lucide-react';
+import { useAuth } from '@/providers/AuthProvider';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 
 interface ChannelCreationDialogProps {
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  type: 'group' | 'direct';
 }
 
-const ChannelCreationDialog = ({ isOpen, setIsOpen }: ChannelCreationDialogProps) => {
-  const { createChannel, user } = useChat();
-  const [newChannelName, setNewChannelName] = useState('');
+const ChannelCreationDialog: React.FC<ChannelCreationDialogProps> = ({ open, setOpen, type }) => {
+  const { user, getAllUsers } = useAuth();
+  const { createChannel } = useChat();
+  const [channelName, setChannelName] = useState('');
+  const [selectedParticipants, setSelectedParticipants] = useState<{ [key: string]: boolean }>({});
+  const [availableUsers, setAvailableUsers] = useState(getAllUsers());
+  const [isCreating, setIsCreating] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
 
-  const handleCreateChannel = () => {
-    if (!newChannelName.trim() || !user) return;
-    createChannel(newChannelName, [user.id], isPrivate);
-    setNewChannelName('');
-    setIsPrivate(false);
-    setIsOpen(false);
+  useEffect(() => {
+    if (user) {
+      const filteredUsers = getAllUsers().filter(u => u.id !== user.id);
+      setAvailableUsers(filteredUsers);
+    }
+  }, [user, getAllUsers]);
+
+  const toggleParticipant = (userId: string) => {
+    setSelectedParticipants(prev => ({
+      ...prev,
+      [userId]: !prev[userId]
+    }));
+  };
+
+  const handleCreateChannel = async () => {
+    if (channelName.trim()) {
+      setIsCreating(true);
+      try {
+        const selectedParticipantIds = Object.entries(selectedParticipants)
+          .filter(([_, isSelected]) => isSelected)
+          .map(([id]) => id);
+        
+        if (selectedParticipantIds.length === 0 && type !== 'group') {
+          toast.error('Please select at least one participant for direct messages');
+          setIsCreating(false);
+          return;
+        }
+        
+        await createChannel(channelName, selectedParticipantIds, isPrivate);
+        toast.success(`${type === 'group' ? 'Channel' : 'Direct message'} created successfully`);
+        setOpen(false);
+      } catch (error) {
+        console.error('Error creating channel:', error);
+        toast.error(`Failed to create ${type === 'group' ? 'channel' : 'direct message'}`);
+      } finally {
+        setIsCreating(false);
+      }
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-6 w-6 text-discord-light hover:text-white" title="Create Channel">
-          <PlusCircle className="h-5 w-5" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="bg-discord-darker border-discord-darkest text-white">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="bg-discord-darker text-white border-discord-primary/20">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">Create Channel</DialogTitle>
+          <DialogTitle>{type === 'group' ? 'Create Channel' : 'Create Direct Message'}</DialogTitle>
+          <DialogDescription className="text-discord-light">
+            {type === 'group'
+              ? 'Create a new channel for your community.'
+              : 'Start a direct message with someone.'}
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 pt-4">
-          <Input
-            value={newChannelName}
-            onChange={(e) => setNewChannelName(e.target.value)}
-            placeholder="Channel name"
-            className="bg-discord-darkest border-none"
-          />
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="private-channel"
-              checked={isPrivate}
-              onChange={() => setIsPrivate(!isPrivate)}
-              className="form-checkbox h-4 w-4 text-discord-primary"
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">
+              {type === 'group' ? 'Channel Name' : 'Conversation Name'}
+            </Label>
+            <Input
+              id="name"
+              value={channelName}
+              onChange={(e) => setChannelName(e.target.value)}
+              className="col-span-3 bg-discord-darkest border-none text-white"
             />
-            <label htmlFor="private-channel" className="text-sm text-discord-light">
-              Private Channel
-            </label>
           </div>
-          <Button 
-            onClick={handleCreateChannel} 
-            className="w-full bg-discord-primary hover:bg-discord-primary/90"
-          >
-            Create Channel
-          </Button>
+          {type === 'group' && (
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="private-channel"
+                checked={isPrivate}
+                onCheckedChange={setIsPrivate}
+              />
+              <Label htmlFor="private-channel">Private Channel</Label>
+            </div>
+          )}
+          <div>
+            <Label>Participants</Label>
+            <div className="max-h-40 overflow-y-auto p-2">
+              {availableUsers.map(user => (
+                <div key={user.id} className="flex items-center space-x-2 py-1">
+                  <Checkbox
+                    id={`user-${user.id}`}
+                    checked={selectedParticipants[user.id] || false}
+                    onCheckedChange={() => toggleParticipant(user.id)}
+                  />
+                  <Avatar className="h-5 w-5">
+                    <AvatarImage src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} alt={user.username} />
+                    <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <Label htmlFor={`user-${user.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    {user.username}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" onClick={handleCreateChannel} disabled={isCreating} className="bg-discord-primary hover:bg-discord-primary/80 text-white">
+            {isCreating ? 'Creating...' : 'Create'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

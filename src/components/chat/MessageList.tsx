@@ -1,281 +1,138 @@
-import { useState, useRef, useEffect } from 'react';
-import { useChat, Message } from '@/providers/ChatProvider';
+import React, { useState, useEffect, useRef } from 'react';
+import { useChat } from '@/providers/ChatProvider';
 import { useAuth } from '@/providers/AuthProvider';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Heart, ThumbsUp, Smile, Trash2, Edit2, Save, X 
-} from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { format } from 'date-fns';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
-const REACTIONS = [
-  { emoji: '❤️', icon: Heart },
-  { emoji: '👍', icon: ThumbsUp },
-  { emoji: '😂', icon: Smile },
-  { emoji: '🎉', icon: () => <span className="text-lg">🎉</span> },
-  { emoji: '😍', icon: () => <span className="text-lg">😍</span> },
-];
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Send, Info } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const MessageList = () => {
-  const { currentChannel } = useChat();
+  const { currentChannel, sendMessage: sendChatMessage } = useChat();
+  const { user, isAdmin } = useAuth();
+  const [messageText, setMessageText] = useState('');
+  const [channelParticipants, setChannelParticipants] = useState<{ [userId: string]: { nickname: string } }>({});
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-  
+
   useEffect(() => {
-    // Scroll to bottom when messages change
-    scrollToBottom();
+    if (currentChannel) {
+      const participants: { [userId: string]: { nickname: string } } = {};
+      currentChannel.participants.forEach(participantId => {
+        const nickname = currentChannel.nicknames[participantId] || '';
+        participants[participantId] = { nickname };
+      });
+      setChannelParticipants(participants);
+    }
+  }, [currentChannel]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [currentChannel?.messages]);
 
-  if (!currentChannel) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-discord-dark">
-        <div className="text-discord-light">Select a channel to start chatting</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex-1 flex flex-col bg-discord-dark h-full">
-      <div className="channel-bar flex items-center">
-        <span className="text-lg font-medium">#{currentChannel.name}</span>
-        {currentChannel.isPrivate && (
-          <span className="ml-2 text-xs bg-discord-primary/20 text-discord-primary px-2 py-0.5 rounded">
-            Private
-          </span>
-        )}
-      </div>
-      
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <ScrollArea className="flex-1 px-4" style={{ height: 'calc(100vh - 180px)' }}>
-          <div className="py-4 space-y-2">
-            {currentChannel.messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-discord-light">
-                <div className="text-5xl mb-4">👋</div>
-                <div className="text-xl font-medium">Welcome to #{currentChannel.name}!</div>
-                <div className="text-sm">This is the start of the channel.</div>
-              </div>
-            ) : (
-              currentChannel.messages.map((message) => (
-                <MessageItem key={message.id} message={message} />
-              ))
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
-        
-        <MessageInput />
-      </div>
-    </div>
-  );
-};
-
-const MessageItem = ({ message }: { message: Message }) => {
-  const { deleteMessage, editMessage, addReaction, removeReaction, currentChannel } = useChat();
-  const { user } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedContent, setEditedContent] = useState(message.content);
-  const isOwnMessage = user?.id === message.senderId;
-  
-  const nickname = currentChannel?.nicknames[message.senderId];
-  const displayName = nickname || message.senderName;
-
-  const handleSave = () => {
-    if (editedContent.trim() && editedContent !== message.content) {
-      editMessage(message.id, editedContent);
+  const handleSendMessage = () => {
+    if (messageText.trim() && currentChannel) {
+      sendChatMessage(messageText);
+      setMessageText('');
     }
-    setIsEditing(false);
   };
 
-  const handleReaction = (emoji: string) => {
-    if (!user) return;
-    
-    const hasReacted = message.reactions[emoji]?.includes(user.id);
-    if (hasReacted) {
-      removeReaction(message.id, emoji);
-    } else {
-      addReaction(message.id, emoji);
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSendMessage();
     }
   };
 
   return (
-    <div className="message group">
-      <div className="flex">
-        <img 
-          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${message.senderName}`}
-          alt={displayName}
-          className="w-10 h-10 rounded-full mr-3 mt-1"
-        />
+    <div className="flex flex-col flex-1 bg-discord-dark overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center px-4 py-2 bg-discord-darker border-b border-discord-primary/20">
         <div className="flex-1">
-          <div className="flex items-baseline">
-            <span className="font-medium text-white">{displayName}</span>
-            <span className="ml-2 text-xs text-discord-light">
-              {format(new Date(message.timestamp), 'MMM d, h:mm a')}
-            </span>
-            {message.edited && (
-              <span className="ml-2 text-xs text-discord-light italic">(edited)</span>
-            )}
-          </div>
-          
-          {isEditing ? (
-            <div className="mt-1 flex items-center gap-2">
-              <Input
-                value={editedContent}
-                onChange={(e) => setEditedContent(e.target.value)}
-                className="bg-discord-darkest border-none text-white"
-                autoFocus
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleSave}
-                className="h-8 w-8 text-discord-light hover:text-white hover:bg-discord-primary/20"
-              >
-                <Save className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsEditing(false)}
-                className="h-8 w-8 text-discord-light hover:text-white hover:bg-discord-danger/20"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : (
-            <div className="mt-1 text-white whitespace-pre-wrap break-words">
-              {message.content}
-            </div>
-          )}
-          
-          {/* Reactions */}
-          {!isEditing && Object.keys(message.reactions).length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {Object.entries(message.reactions).map(([emoji, userIds]) => {
-                if (userIds.length === 0) return null;
-                const hasReacted = userIds.includes(user?.id || '');
-                
-                return (
-                  <TooltipProvider key={emoji}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          className={`flex items-center space-x-1 text-sm px-2 py-0.5 rounded ${
-                            hasReacted
-                              ? 'bg-discord-primary/30 text-white'
-                              : 'bg-discord-darker hover:bg-discord-darkest text-discord-light'
-                          }`}
-                          onClick={() => handleReaction(emoji)}
-                        >
-                          <span>{emoji}</span>
-                          <span>{userIds.length}</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <div className="text-xs">
-                          {userIds.map((id) => id).join(', ')}
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                );
-              })}
-            </div>
-          )}
+          <h2 className="text-white font-semibold truncate">
+            {currentChannel?.name || 'Select a channel'}
+          </h2>
         </div>
         
-        {/* Message actions */}
-        {!isEditing && (
-          <div className="opacity-0 group-hover:opacity-100 flex items-center space-x-1">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-discord-light hover:text-white hover:bg-discord-primary/20 rounded-full"
-                >
-                  <Smile className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2 bg-discord-darker border-discord-darkest">
-                <div className="flex space-x-2">
-                  {REACTIONS.map((reaction) => (
-                    <Button
-                      key={reaction.emoji}
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleReaction(reaction.emoji)}
-                      className="h-8 w-8 text-discord-light hover:text-white"
-                    >
-                      {reaction.emoji}
-                    </Button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            
-            {isOwnMessage && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsEditing(true)}
-                  className="h-8 w-8 text-discord-light hover:text-white hover:bg-discord-primary/20 rounded-full"
-                >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => deleteMessage(message.id)}
-                  className="h-8 w-8 text-discord-light hover:text-discord-danger hover:bg-discord-danger/20 rounded-full"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </>
-            )}
-          </div>
+        {/* Only show channel info button on mobile if we're not in admin panel */}
+        {isMobile && currentChannel && currentChannel.id !== 'admin' && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-2 text-discord-light hover:text-white hover:bg-discord-primary/20"
+            onClick={() => {
+              // Logic to show channel info
+              // If you have a function to show channel settings, call it here
+            }}
+          >
+            <Info size={18} />
+          </Button>
         )}
       </div>
-    </div>
-  );
-};
 
-const MessageInput = () => {
-  const [message, setMessage] = useState('');
-  const { sendMessage } = useChat();
+      {/* Message List */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {currentChannel ? (
+          currentChannel.messages.map((message) => (
+            <div key={message.id} className="mb-2">
+              <div className="flex items-center mb-1">
+                <Avatar className="h-8 w-8 mr-2">
+                  <AvatarImage src={message.senderAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${message.senderName}`} />
+                  <AvatarFallback>{message.senderName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <span 
+                    className="font-semibold text-white mr-2 cursor-pointer hover:underline"
+                    onClick={() => navigate(`/profile/${message.senderId}`)}
+                  >
+                    {channelParticipants[message.senderId]?.nickname || message.senderName}
+                  </span>
+                  <span className="text-xs text-discord-light">
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-discord-light ml-10">{message.content}</p>
+            </div>
+          ))
+        ) : (
+          <div className="text-center text-discord-light">
+            Select a channel to start chatting
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (message.trim()) {
-      sendMessage(message);
-      setMessage('');
-    }
-  };
-
-  return (
-    <div className="p-4 bg-discord-dark border-t border-discord-darker mt-auto">
-      <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-        <input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Type a message..."
-          className="message-input"
-        />
-        <Button 
-          type="submit"
-          className="bg-discord-primary hover:bg-discord-primary/90"
-          disabled={!message.trim()}
-        >
-          Send
-        </Button>
-      </form>
+      {/* Message Input */}
+      <div className="p-4 bg-discord-darker border-t border-discord-primary/20">
+        <div className="flex items-end">
+          <div className="flex-1">
+            <Textarea
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={currentChannel ? "Type a message..." : "Select a channel to start chatting..."}
+              disabled={!currentChannel || isAdmin}
+              className={`min-h-10 max-h-40 bg-discord-darkest border-none text-white resize-none ${
+                isMobile ? 'text-sm p-2' : ''
+              }`}
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={handleSendMessage}
+            disabled={!messageText.trim() || !currentChannel || isAdmin}
+            className={`ml-2 bg-discord-primary hover:bg-discord-primary/80 ${
+              isMobile ? 'p-2 h-8 w-8' : ''
+            }`}
+          >
+            <Send size={isMobile ? 16 : 20} />
+            {!isMobile && <span className="ml-1">Send</span>}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

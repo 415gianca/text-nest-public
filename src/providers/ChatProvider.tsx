@@ -15,6 +15,7 @@ export interface Message {
   reactions: {
     [key: string]: string[]; // emoji: userId[]
   };
+  senderAvatar?: string;
 }
 
 export interface Channel {
@@ -38,9 +39,9 @@ interface ChatContextType {
   editMessage: (messageId: string, newContent: string) => void;
   addReaction: (messageId: string, emoji: string) => void;
   removeReaction: (messageId: string, emoji: string) => void;
-  createChannel: (name: string, participants: string[], isPrivate: boolean) => void;
+  createChannel: (name: string, participants: string[], isPrivate: boolean) => Promise<Channel | undefined>;
   setNickname: (channelId: string, userId: string, nickname: string) => void;
-  createDirectMessage: (recipientId: string) => void;
+  createDirectMessage: (recipientId: string) => Promise<Channel | undefined>;
   getAllUsers: () => User[];
 }
 

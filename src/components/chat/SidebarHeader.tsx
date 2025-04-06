@@ -1,46 +1,48 @@
-
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/providers/AuthProvider';
+import { useNavigate } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
 
-const SidebarHeader = () => {
-  const { user, logout } = useAuth();
-  
+// Update the component to accept a new prop
+const SidebarHeader = ({ isMobileSidebar = false }) => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
   return (
-    <>
-      <div className="p-4 text-xl font-bold border-b border-discord-darkest flex items-center justify-between">
-        <span>TextNest</span>
-      </div>
-
-      {/* User profile */}
-      <div className="p-4 border-b border-discord-darkest">
-        <div className="flex items-center space-x-2">
-          <div className="relative">
-            <img 
-              src={user?.avatar} 
-              alt={user?.username} 
-              className="w-8 h-8 rounded-full"
-            />
-            <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-discord-darker ${
-              user?.status === 'online' ? 'bg-discord-success' : 'bg-yellow-500'
-            }`}></span>
-          </div>
-          <div className="flex-1">
-            <div className="text-white font-medium">{user?.username}</div>
-            <div className="text-xs text-discord-light">
-              {user?.isAdmin ? 'Administrator' : 'User'}
-            </div>
-          </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={logout}
-            className="h-8 px-2 text-discord-light hover:text-white hover:bg-discord-darkest"
+    <div className="p-4 border-b border-discord-primary/20">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-bold text-white">TextNest</h1>
+        
+        {isMobileSidebar && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/profile')}
+            className="text-discord-light hover:text-white hover:bg-discord-primary/20"
           >
-            Logout
+            Profile
           </Button>
-        </div>
+        )}
       </div>
-    </>
+      
+      <div className="flex items-center justify-between">
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={() => navigate('/chat')}
+          className="text-discord-light hover:text-white hover:bg-discord-primary/20"
+        >
+          Chat
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={() => logout()}
+          className="text-discord-light hover:text-white hover:bg-discord-primary/20"
+        >
+          Logout
+        </Button>
+      </div>
+    </div>
   );
 };
 

@@ -1,105 +1,153 @@
 
+import { useState, useCallback } from 'react';
 import { toast } from "sonner";
+import { supabase } from '@/integrations/supabase/client';
+import { Channel, Message, User } from '@/providers/ChatProvider';
 import { generate as generateId } from 'shortid';
-import { Channel } from '@/providers/ChatProvider';
-import { User } from '@/providers/AuthProvider';
 
-export const useChannelManagement = (
+const useChannelManagement = (
   user: User | null,
   channels: Channel[],
   setChannels: React.Dispatch<React.SetStateAction<Channel[]>>,
-  setCurrentChannelId: (id: string) => void,
+  setCurrentChannelId: React.Dispatch<React.SetStateAction<string>>,
   getAllUsers: () => User[]
 ) => {
-  const createChannel = (name: string, participantIds: string[], isPrivate: boolean) => {
-    if (!user) return;
-
-    const existingChannel = channels.find(c => c.name.toLowerCase() === name.toLowerCase());
-    if (existingChannel) {
-      toast.error("A channel with this name already exists");
-      return;
-    }
-
-    if (!participantIds.includes(user.id)) {
-      participantIds.push(user.id);
-    }
-
-    const newChannel: Channel = {
-      id: generateId(),
-      name,
-      type: participantIds.length === 2 ? 'direct' : 'group',
-      participants: participantIds,
-      isPrivate,
-      creatorId: user.id,
-      nicknames: {},
-      messages: []
-    };
-
-    setChannels(prevChannels => [...prevChannels, newChannel]);
-    setCurrentChannelId(newChannel.id);
-    toast.success(`Channel "${name}" created`);
-  };
-
-  const setNickname = (channelId: string, userId: string, nickname: string) => {
-    if (!user) return;
-
-    setChannels(prevChannels => 
-      prevChannels.map(channel => 
-        channel.id === channelId
-          ? { 
-              ...channel, 
-              nicknames: {
-                ...channel.nicknames,
-                [userId]: nickname
-              }
-            }
-          : channel
-      )
-    );
-
-    toast.success(`Nickname set to "${nickname}"`);
-  };
-
-  const createDirectMessage = (recipientId: string) => {
-    if (!user) return;
-    
-    const existingChannel = channels.find(
-      channel => 
-        channel.type === 'direct' && 
-        channel.participants.includes(user.id) && 
-        channel.participants.includes(recipientId) &&
-        channel.participants.length === 2
-    );
-    
-    if (existingChannel) {
-      setCurrentChannelId(existingChannel.id);
-      return;
-    }
-
-    const allUsers = getAllUsers();
-    const recipient = allUsers.find(u => u.id === recipientId);
-    if (!recipient) {
-      toast.error("User not found");
-      return;
-    }
-
-    const channelName = `${user.username}-${recipient.username}`;
-    const dmChannel: Channel = {
-      id: generateId(),
-      name: channelName,
-      type: 'direct',
-      participants: [user.id, recipientId],
-      isPrivate: true,
-      creatorId: user.id,
-      nicknames: {},
-      messages: []
-    };
-
-    setChannels(prevChannels => [...prevChannels, dmChannel]);
-    setCurrentChannelId(dmChannel.id);
-    toast.success(`Started conversation with ${recipient.username}`);
-  };
-
+  
+  const createChannel = useCallback(
+    async (name: string, participantIds: string[], isPrivate: boolean = false) => {
+      if (!user) {
+        toast.error('You must be logged in to create a channel');
+        return;
+      }
+      
+      const type = participantIds.length === 1 ? 'direct' : 'group';
+      
+      try {
+        // Create channel in Supabase
+        const { data: channelData, error: channelError } = await supabase
+          .from('channels')
+          .insert({
+            name,
+            type,
+            creator_id: user.id,
+            is_private: isPrivate
+          })
+          .select()
+          .single();
+        
+        if (channelError) {
+          console.error('Error creating channel:', channelError);
+          throw new Error('Failed to create channel');
+        }
+        
+        // Add participants to channel (including the creator)
+        const allParticipants = [...new Set([user.id, ...participantIds])];
+        const participantInserts = allParticipants.map(userId => ({
+          channel_id: channelData.id,
+          user_id: userId
+        }));
+        
+        const { error: participantsError } = await supabase
+          .from('channel_participants')
+          .insert(participantInserts);
+        
+        if (participantsError) {
+          console.error('Error adding participants:', participantsError);
+          throw new Error('Failed to add participants');
+        }
+        
+        // Create the channel locally
+        const newChannel: Channel = {
+          id: channelData.id,
+          name: channelData.name,
+          type: channelData.type as 'direct' | 'group',
+          participants: allParticipants,
+          messages: [],
+          isPrivate: channelData.is_private,
+          creatorId: channelData.creator_id,
+          nicknames: {}
+        };
+        
+        setChannels(prev => [...prev, newChannel]);
+        setCurrentChannelId(newChannel.id);
+        return newChannel;
+      } catch (error) {
+        console.error('Error in createChannel:', error);
+        throw error;
+      }
+    },
+    [user, setChannels, setCurrentChannelId]
+  );
+  
+  const setNickname = useCallback(
+    async (channelId: string, userId: string, nickname: string) => {
+      if (!user) {
+        toast.error('You must be logged in to set nicknames');
+        return;
+      }
+      
+      try {
+        // Update nickname in Supabase
+        const { error } = await supabase
+          .from('channel_participants')
+          .update({ nickname })
+          .eq('channel_id', channelId)
+          .eq('user_id', userId);
+        
+        if (error) {
+          console.error('Error updating nickname:', error);
+          throw new Error('Failed to update nickname');
+        }
+        
+        // Update the nickname locally
+        setChannels(prev => 
+          prev.map(channel => 
+            channel.id === channelId 
+              ? { ...channel, nicknames: { ...channel.nicknames, [userId]: nickname } }
+              : channel
+          )
+        );
+      } catch (error) {
+        console.error('Error in setNickname:', error);
+        throw error;
+      }
+    },
+    [user, setChannels]
+  );
+  
+  const createDirectMessage = useCallback(
+    async (recipientId: string) => {
+      if (!user) {
+        toast.error('You must be logged in to create a direct message');
+        return;
+      }
+      
+      // Check if a DM already exists with this user
+      const existingDM = channels.find(
+        channel => 
+          channel.type === 'direct' && 
+          channel.participants.includes(user.id) && 
+          channel.participants.includes(recipientId)
+      );
+      
+      if (existingDM) {
+        setCurrentChannelId(existingDM.id);
+        return existingDM;
+      }
+      
+      // Get recipient details
+      const recipient = getAllUsers().find(u => u.id === recipientId);
+      if (!recipient) {
+        toast.error('User not found');
+        return;
+      }
+      
+      // Create a new DM channel
+      return createChannel(recipient.username, [recipientId], true);
+    },
+    [user, channels, setCurrentChannelId, createChannel, getAllUsers]
+  );
+  
   return {
     createChannel,
     setNickname,

@@ -2,65 +2,103 @@
 import { useState } from 'react';
 import { useChat } from '@/providers/ChatProvider';
 import { useAuth } from '@/providers/AuthProvider';
-import { Button } from '@/components/ui/button';
 import SidebarHeader from './SidebarHeader';
 import ChannelList from './ChannelList';
-import ChannelCreationDialog from './ChannelCreationDialog';
-import DirectMessageDialog from './DirectMessageDialog';
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const Sidebar = () => {
-  const { currentChannel, setCurrentChannel } = useChat();
   const { user, isAdmin } = useAuth();
-  const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
-  const [isDMDialogOpen, setIsDMDialogOpen] = useState(false);
+  const { channels, currentChannel, setCurrentChannel } = useChat();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isMobile = useIsMobile();
+  
+  if (!user) return null;
 
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+  
+  const sidebarContent = (
+    <div className="flex flex-col h-full">
+      <SidebarHeader isMobileSidebar={isMobile} />
+      <div className="flex-1 overflow-y-auto">
+        <ChannelList />
+      </div>
+    </div>
+  );
+  
+  if (isMobile) {
+    return (
+      <>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="fixed top-4 left-4 z-10 bg-discord-primary text-white hover:bg-discord-primary/80"
+          asChild
+        >
+          <SheetTrigger>
+            <Menu size={20} />
+          </SheetTrigger>
+        </Button>
+        
+        <Sheet>
+          <SheetContent side="left" className="p-0 bg-discord-dark w-64 border-r border-discord-primary/20">
+            {sidebarContent}
+          </SheetContent>
+        </Sheet>
+      </>
+    );
+  }
+  
   return (
-    <div className="w-60 bg-discord-darker flex flex-col h-screen">
-      <SidebarHeader />
+    <div className={`relative flex transition-all duration-300 ease-in-out ${
+      isCollapsed ? 'w-12' : 'w-64'
+    } bg-discord-dark border-r border-discord-primary/20`}>
       
-      <div className="p-4 text-xl font-bold border-b border-discord-darkest flex items-center justify-between">
-        <span>TextNest</span>
-        <div className="flex space-x-1">
-          <ChannelCreationDialog 
-            isOpen={isChannelDialogOpen} 
-            setIsOpen={setIsChannelDialogOpen} 
-          />
-          <DirectMessageDialog 
-            isOpen={isDMDialogOpen} 
-            setIsOpen={setIsDMDialogOpen}
-            currentUser={user}
-          />
-        </div>
+      <div className={`flex flex-col w-full ${isCollapsed ? 'items-center' : ''}`}>
+        {!isCollapsed && sidebarContent}
+        
+        {isCollapsed && (
+          <div className="flex flex-col items-center py-4 space-y-4">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="text-discord-light hover:bg-discord-primary/20 hover:text-white"
+              onClick={() => setCurrentChannel('admin')}
+            >
+              A
+            </Button>
+            
+            {channels.map((channel) => (
+              <Button
+                key={channel.id}
+                variant="ghost"
+                size="icon"
+                className={`w-8 h-8 rounded-full ${
+                  currentChannel?.id === channel.id 
+                    ? 'bg-discord-primary text-white' 
+                    : 'text-discord-light hover:bg-discord-primary/20 hover:text-white'
+                }`}
+                onClick={() => setCurrentChannel(channel.id)}
+              >
+                {channel.name.substring(0, 1).toUpperCase()}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Channels list with categories */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {/* Direct Messages category */}
-        <div className="text-discord-light uppercase text-xs font-semibold p-2 flex justify-between items-center">
-          <span>Direct Messages</span>
-        </div>
-        <ChannelList type="direct" currentUser={user} />
-          
-        {/* Text Channels category */}
-        <div className="text-discord-light uppercase text-xs font-semibold p-2 mt-4">
-          Text Channels
-        </div>
-        <ChannelList type="group" currentUser={user} />
-      </div>
-
-      {/* Admin panel link */}
-      {isAdmin && (
-        <div className="p-3 border-t border-discord-darkest">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="w-full justify-start text-discord-danger hover:text-discord-danger hover:bg-discord-darkest"
-            onClick={() => setCurrentChannel('admin')}
-          >
-            Admin Dashboard
-          </Button>
-        </div>
-      )}
+      
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={toggleSidebar}
+        className="absolute -right-3 top-1/2 transform -translate-y-1/2 w-6 h-12 rounded-full bg-discord-dark border border-discord-primary/20 text-discord-light hover:text-white z-10"
+      >
+        {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+      </Button>
     </div>
   );
 };
