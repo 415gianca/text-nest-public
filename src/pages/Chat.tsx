@@ -8,24 +8,28 @@ import MessageList from '@/components/chat/MessageList';
 import UserSettings from '@/components/chat/UserSettings';
 import AdminPanel from '@/components/admin/AdminPanel';
 import { useIsMobile } from '@/hooks/use-mobile';
+import Footer from '@/components/common/Footer';
 
 const ChatContainer = () => {
   const { currentChannel } = useChat();
   const isMobile = useIsMobile();
   
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {currentChannel && currentChannel.id === 'admin' ? (
-          <AdminPanel />
-        ) : (
-          <>
-            <MessageList />
-            {!isMobile && <UserSettings />}
-          </>
-        )}
+    <div className="flex flex-col h-screen">
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {currentChannel && currentChannel.id === 'admin' ? (
+            <AdminPanel />
+          ) : (
+            <>
+              <MessageList />
+              {!isMobile && <UserSettings />}
+            </>
+          )}
+        </div>
       </div>
+      <Footer />
     </div>
   );
 };

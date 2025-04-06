@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Shield, User, Users } from 'lucide-react';
+import Footer from '@/components/common/Footer';
 
 const Index = () => {
   const { isAuthenticated } = useAuth();
@@ -23,10 +24,10 @@ const Index = () => {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
               <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-                TextNest
+                💬 Text Nest 🐣
               </h1>
               <p className="text-xl md:text-2xl text-discord-light max-w-2xl mx-auto mb-8">
-                A simple messaging platform for friends, family, and communities
+                A simple messaging platform for friends and family. By 415Gianca⚡
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button 
@@ -90,12 +91,7 @@ const Index = () => {
         </div>
       </div>
       
-      {/* Footer */}
-      <footer className="bg-discord-darkest py-8">
-        <div className="container mx-auto px-4 text-center text-discord-light">
-          <p>© 2023 TextNest. All rights reserved.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
