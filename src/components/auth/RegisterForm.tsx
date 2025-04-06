@@ -46,18 +46,6 @@ const RegisterForm = () => {
     try {
       console.log("Starting registration process for:", email);
       
-      // Try to first check if the user already exists
-      const { data: existingUser, error: checkError } = await supabase.auth.admin
-        .getUserByEmail(email)
-        .catch(() => ({ data: null, error: null }));
-      
-      if (existingUser) {
-        setError('An account with this email already exists');
-        toast.error('An account with this email already exists');
-        setIsLoading(false);
-        return;
-      }
-      
       // Use Supabase directly for better error visibility
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -80,16 +68,16 @@ const RegisterForm = () => {
       }
       
       // Handle database error - check if the user was created but profile insertion failed
-      if (data?.user && !data.user.id) {
-        console.error("User creation potentially failed - no user ID returned");
-        setError('Database error saving user information');
-        toast.error('Database error saving user information');
+      if (!data?.user) {
+        console.error("User creation failed - no user object returned");
+        setError('Failed to create account');
+        toast.error('Failed to create account');
         setIsLoading(false);
         return;
       }
       
       // If we have a confirmation URL, that means email confirmation is enabled
-      if (data?.user?.confirmation_sent_at) {
+      if (data.user.confirmation_sent_at) {
         toast.success("Registration successful! Please check your email to confirm your account.");
         navigate('/login');
       } else {
