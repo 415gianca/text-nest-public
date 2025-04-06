@@ -6,6 +6,14 @@ import { generate as generateId } from 'shortid';
 import { User } from '@/providers/AuthProvider';
 import { Channel, Message } from '@/providers/ChatProvider';
 
+// Helper function to validate status
+const validateStatus = (status: string | null): "online" | "idle" | "offline" => {
+  if (status === "idle" || status === "offline") {
+    return status;
+  }
+  return "online"; // Default to online for any other value
+};
+
 export const useSupabaseChat = (user: User | null) => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [currentChannelId, setCurrentChannelId] = useState<string>("");
@@ -52,13 +60,15 @@ export const useSupabaseChat = (user: User | null) => {
         }
         
         if (data) {
-          setAllUsers(data.map(profile => ({
+          const typedUsers: User[] = data.map(profile => ({
             id: profile.id,
             username: profile.username,
             avatar: profile.avatar,
-            status: profile.status || 'online',
+            status: validateStatus(profile.status),
             isAdmin: profile.is_admin || false
-          })));
+          }));
+          
+          setAllUsers(typedUsers);
         }
       } catch (error) {
         console.error("Error fetching users:", error);
