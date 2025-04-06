@@ -13,11 +13,6 @@ interface AdminInviteVerification {
   email: string;
 }
 
-// Define parameter interface for the RPC call
-interface VerifyAdminInviteParams {
-  invite_token: string;
-}
-
 const RegisterForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
