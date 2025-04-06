@@ -68,7 +68,7 @@ const RegisterForm = () => {
       }
       
       // If we have a confirmation URL, that means email confirmation is enabled
-      if (data?.user?.confirmationSentAt) {
+      if (data?.user?.confirmation_sent_at) {
         toast.success("Registration successful! Please check your email to confirm your account.");
         navigate('/login');
       } else {

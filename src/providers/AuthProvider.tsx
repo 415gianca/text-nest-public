@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
@@ -27,7 +26,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in via Supabase
     const getUser = async () => {
       console.log("AuthProvider: Checking for existing session");
       const { data: { session } } = await supabase.auth.getSession();
@@ -35,7 +33,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         console.log("AuthProvider: Found existing session", session.user.id);
         try {
-          // Get the user profile from Supabase
           const { data: profile, error } = await supabase
             .from('profiles')
             .select('*')
@@ -68,7 +65,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else {
         console.log("AuthProvider: No session found, checking localStorage");
-        // Fallback to localStorage for demo purposes
         const savedUser = localStorage.getItem('user');
         if (savedUser) {
           try {
@@ -89,7 +85,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     getUser();
     
-    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("AuthProvider: Auth state changed", event, session?.user?.id);
@@ -160,7 +155,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (email: string, password: string): Promise<boolean> => {
     try {
       console.log("AuthProvider: Attempting registration for", email);
-      // Extract username from email (before the @ symbol)
       const username = email.split('@')[0];
       
       const { data, error } = await supabase.auth.signUp({
@@ -181,14 +175,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log("Registration response:", data);
       
-      // Check if email confirmation is required
       if (data?.user?.identities && data.user.identities.length === 0) {
         console.error("User may already exist but is not confirmed");
         toast.error("This email may already be registered. Please check your email for confirmation or try logging in.");
         return false;
       }
       
-      if (data?.user?.confirmationSentAt) {
+      if (data?.user?.confirmation_sent_at) {
         toast.success("Please check your email to confirm your account!");
       } else {
         toast.success("Account created successfully!");
