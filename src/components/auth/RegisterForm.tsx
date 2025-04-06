@@ -8,6 +8,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 
+// Define the interface for admin invite verification response
+interface AdminInviteVerification {
+  is_valid: boolean;
+  email: string;
+}
+
 const RegisterForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +38,7 @@ const RegisterForm = () => {
   // Verify admin invite token
   const verifyAdminInvite = async (token: string) => {
     try {
-      const { data, error } = await supabase.rpc('verify_admin_invite', {
+      const { data, error } = await supabase.rpc<AdminInviteVerification[]>('verify_admin_invite', {
         invite_token: token
       });
       
