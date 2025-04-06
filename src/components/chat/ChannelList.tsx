@@ -21,22 +21,20 @@ const ChannelList = ({ type, currentUser }: ChannelListProps) => {
     <>
       {filteredChannels.map((channel) => {
         // For DMs, show the other user's name
-        let displayChannel = {...channel};
+        let displayName = channel.name;
         
         if (type === 'direct') {
           const otherUserId = channel.participants.find(id => id !== currentUser?.id);
           const otherUser = otherUserId && allUsers.find(u => u.id === otherUserId);
           if (otherUser) {
-            displayChannel = {...channel, name: otherUser.username};
+            displayName = otherUser.username;
           }
         }
         
         return (
           <ChannelItem 
             key={channel.id} 
-            channel={displayChannel}
-            isActive={currentChannel?.id === channel.id}
-            onClick={() => setCurrentChannel(channel.id)}
+            channelId={channel.id}
           />
         );
       })}

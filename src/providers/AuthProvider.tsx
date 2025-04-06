@@ -17,6 +17,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<boolean>;
   register: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
+  getAllUsers: () => User[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
     const getUser = async () => {
@@ -211,6 +213,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log("AuthProvider: Logged out successfully");
   };
 
+  const getAllUsers = () => {
+    return allUsers;
+  };
+
+  useEffect(() => {
+    const fetchAllUsers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*');
+          
+        if (error) {
+          console.error("Error fetching users:", error);
+          return;
+        }
+        
+        if (data) {
+          const users: User[] = data.map(profile => ({
+            id: profile.id,
+            username: profile.username,
+            isAdmin: profile.is_admin,
+            status: profile.status as 'online' | 'idle' | 'offline' || 'online',
+            avatar: profile.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username}`,
+          }));
+          setAllUsers(users);
+        }
+      } catch (error) {
+        console.error("Error in fetchAllUsers:", error);
+      }
+    };
+    
+    fetchAllUsers();
+    
+    const profilesSubscription = supabase
+      .channel('profiles-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        fetchAllUsers();
+      })
+      .subscribe();
+      
+    return () => {
+      profilesSubscription.unsubscribe();
+    };
+  }, []);
+
   const value = {
     user,
     isAuthenticated: !!user,
@@ -218,6 +265,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     register,
     logout,
+    getAllUsers,
   };
 
   if (loading) {

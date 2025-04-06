@@ -1,8 +1,8 @@
-
 import { useState, useCallback } from 'react';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
-import { Channel, Message, User } from '@/providers/ChatProvider';
+import { Channel, Message } from '@/providers/ChatProvider';
+import { User } from '@/providers/AuthProvider';
 import { generate as generateId } from 'shortid';
 
 const useChannelManagement = (

@@ -10,7 +10,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const Sidebar = () => {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const { channels, currentChannel, setCurrentChannel } = useChat();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isMobile = useIsMobile();
@@ -25,7 +25,14 @@ const Sidebar = () => {
     <div className="flex flex-col h-full">
       <SidebarHeader isMobileSidebar={isMobile} />
       <div className="flex-1 overflow-y-auto">
-        <ChannelList />
+        <div className="px-2 py-4">
+          <h2 className="px-2 mb-2 text-xs font-semibold uppercase text-discord-light">Direct Messages</h2>
+          <ChannelList type="direct" currentUser={user} />
+        </div>
+        <div className="px-2 py-4">
+          <h2 className="px-2 mb-2 text-xs font-semibold uppercase text-discord-light">Channels</h2>
+          <ChannelList type="group" currentUser={user} />
+        </div>
       </div>
     </div>
   );

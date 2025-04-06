@@ -48,14 +48,14 @@ interface ChatContextType {
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, getAllUsers: getAuthUsers } = useAuth();
   
   const {
     channels,
     setChannels,
     currentChannelId,
     setCurrentChannelId,
-    getAllUsers
+    getAllUsers: getSupabaseUsers
   } = useSupabaseChat(user);
   
   const {
@@ -73,6 +73,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setNickname,
     createDirectMessage
   } = useChannelManagement(user, channels, setChannels, setCurrentChannelId, getAllUsers);
+
+  const getAllUsers = () => {
+    return getAuthUsers();
+  };
 
   const value = {
     channels,

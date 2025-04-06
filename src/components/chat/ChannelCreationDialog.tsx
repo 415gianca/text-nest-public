@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useChat } from '@/providers/ChatProvider';
 import { useAuth } from '@/providers/AuthProvider';
@@ -24,8 +25,8 @@ interface ChannelCreationDialogProps {
 }
 
 const ChannelCreationDialog: React.FC<ChannelCreationDialogProps> = ({ open, setOpen, type }) => {
-  const { user, getAllUsers } = useAuth();
-  const { createChannel } = useChat();
+  const { user } = useAuth();
+  const { createChannel, getAllUsers } = useChat();
   const [channelName, setChannelName] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState<{ [key: string]: boolean }>({});
   const [availableUsers, setAvailableUsers] = useState(getAllUsers());
