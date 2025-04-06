@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_invites: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          token: string
+          used: boolean | null
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          token: string
+          used?: boolean | null
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          token?: string
+          used?: boolean | null
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       channel_participants: {
         Row: {
           channel_id: string
@@ -202,7 +229,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_admin_invite: {
+        Args: {
+          admin_email: string
+        }
+        Returns: string
+      }
+      verify_admin_invite: {
+        Args: {
+          invite_token: string
+        }
+        Returns: {
+          is_valid: boolean
+          email: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

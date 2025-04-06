@@ -1,9 +1,9 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from '@/providers/AuthProvider';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
@@ -14,8 +14,48 @@ const RegisterForm = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isAdminInvite, setIsAdminInvite] = useState(false);
+  const [adminInviteToken, setAdminInviteToken] = useState<string | null>(null);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const { register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Check for admin invite token in URL
+  useEffect(() => {
+    const token = searchParams.get('admin_invite');
+    if (token) {
+      verifyAdminInvite(token);
+    }
+  }, [searchParams]);
+  
+  // Verify admin invite token
+  const verifyAdminInvite = async (token: string) => {
+    try {
+      const { data, error } = await supabase.rpc('verify_admin_invite', {
+        invite_token: token
+      });
+      
+      if (error) {
+        console.error("Admin invite verification error:", error);
+        toast.error("Invalid or expired admin invitation");
+        return;
+      }
+      
+      if (data && data.length > 0 && data[0].is_valid) {
+        setIsAdminInvite(true);
+        setAdminInviteToken(token);
+        setAdminEmail(data[0].email);
+        setEmail(data[0].email);
+        toast.success("Admin invitation verified!");
+      } else {
+        toast.error("Invalid or expired admin invitation");
+      }
+    } catch (err) {
+      console.error("Failed to verify admin invite:", err);
+      toast.error("Failed to verify admin invitation");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +81,12 @@ const RegisterForm = () => {
       return;
     }
     
+    // If this is an admin invite but emails don't match
+    if (isAdminInvite && adminEmail && email !== adminEmail) {
+      setError(`You must use the email address "${adminEmail}" for this admin invitation`);
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -53,6 +99,7 @@ const RegisterForm = () => {
         options: {
           data: {
             username: email.split('@')[0],
+            isAdmin: isAdminInvite // Set admin status based on invitation
           }
         }
       });
@@ -96,9 +143,13 @@ const RegisterForm = () => {
   return (
     <Card className="w-[350px] bg-discord-darker border-discord-primary/20">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">Create an account</CardTitle>
+        <CardTitle className="text-2xl text-center">
+          {isAdminInvite ? 'Create Admin Account' : 'Create an account'}
+        </CardTitle>
         <CardDescription className="text-center text-discord-light">
-          Enter your email and password to register
+          {isAdminInvite 
+            ? 'Complete your admin registration' 
+            : 'Enter your email and password to register'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -111,6 +162,7 @@ const RegisterForm = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="bg-discord-darkest border-none text-white"
+              disabled={isAdminInvite && adminEmail !== null}
               required
             />
           </div>
@@ -136,6 +188,13 @@ const RegisterForm = () => {
               required
             />
           </div>
+          
+          {isAdminInvite && (
+            <div className="text-discord-primary text-sm p-2 bg-discord-primary/10 rounded-md">
+              You are registering as an admin user. You'll have access to admin features.
+            </div>
+          )}
+          
           {error && (
             <div className="text-discord-danger text-sm p-2 bg-discord-danger/10 rounded-md">
               {error}
@@ -152,7 +211,7 @@ const RegisterForm = () => {
                 <span>Creating account...</span>
               </div>
             ) : (
-              'Create Account'
+              isAdminInvite ? 'Create Admin Account' : 'Create Account'
             )}
           </Button>
         </form>
