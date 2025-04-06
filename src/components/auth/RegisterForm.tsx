@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,10 +42,9 @@ const RegisterForm = () => {
   // Verify admin invite token
   const verifyAdminInvite = async (token: string) => {
     try {
-      const { data, error } = await supabase.rpc<AdminInviteVerification, VerifyAdminInviteParams>(
-        'verify_admin_invite',
-        { invite_token: token }
-      );
+      const { data, error } = await supabase
+        .rpc('verify_admin_invite', { invite_token: token })
+        .returns<AdminInviteVerification[]>();
       
       if (error) {
         console.error("Admin invite verification error:", error);
