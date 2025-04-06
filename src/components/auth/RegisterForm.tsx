@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from '@/providers/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+import { supabase } from '@/integrations/supabase/client';
 
 const RegisterForm = () => {
   const [email, setEmail] = useState('');
@@ -40,11 +42,45 @@ const RegisterForm = () => {
     }
     
     setIsLoading(true);
-    const success = await register(email, password);
-    setIsLoading(false);
     
-    if (success) {
-      navigate('/chat');
+    try {
+      console.log("Starting registration process for:", email);
+      
+      // Use Supabase directly for better error visibility
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username: email.split('@')[0],
+          }
+        }
+      });
+      
+      console.log("Supabase registration response:", data);
+      
+      if (signUpError) {
+        console.error("Supabase signup error:", signUpError);
+        setError(signUpError.message || 'Failed to create account');
+        toast.error(signUpError.message || 'Failed to create account');
+        setIsLoading(false);
+        return;
+      }
+      
+      // If we have a confirmation URL, that means email confirmation is enabled
+      if (data?.user?.confirmationSentAt) {
+        toast.success("Registration successful! Please check your email to confirm your account.");
+        navigate('/login');
+      } else {
+        toast.success("Account created successfully!");
+        navigate('/chat');
+      }
+    } catch (err: any) {
+      console.error("Unexpected error during registration:", err);
+      setError(err.message || 'An unexpected error occurred');
+      toast.error(err.message || 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 

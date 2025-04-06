@@ -29,9 +29,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Check if user is logged in via Supabase
     const getUser = async () => {
+      console.log("AuthProvider: Checking for existing session");
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
+        console.log("AuthProvider: Found existing session", session.user.id);
         try {
           // Get the user profile from Supabase
           const { data: profile, error } = await supabase
@@ -40,9 +42,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .eq('id', session.user.id)
             .single();
             
-          if (error) throw error;
+          if (error) {
+            console.error("Error fetching user profile:", error);
+            throw error;
+          }
           
           if (profile) {
+            console.log("AuthProvider: Loaded profile", profile);
             const userData: User = {
               id: profile.id,
               username: profile.username,
@@ -53,22 +59,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             setUser(userData);
             localStorage.setItem('user', JSON.stringify(userData));
+          } else {
+            console.log("AuthProvider: No profile found for user", session.user.id);
           }
         } catch (error) {
           console.error("Error fetching user profile:", error);
           localStorage.removeItem('user');
         }
       } else {
+        console.log("AuthProvider: No session found, checking localStorage");
         // Fallback to localStorage for demo purposes
         const savedUser = localStorage.getItem('user');
         if (savedUser) {
           try {
             const parsedUser = JSON.parse(savedUser);
             setUser(parsedUser);
+            console.log("AuthProvider: Loaded user from localStorage", parsedUser);
           } catch (error) {
             console.error("Error parsing saved user:", error);
             localStorage.removeItem('user');
           }
+        } else {
+          console.log("AuthProvider: No user found in localStorage");
         }
       }
       
@@ -80,6 +92,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("AuthProvider: Auth state changed", event, session?.user?.id);
+        
         if (event === 'SIGNED_IN' && session) {
           const { data: profile, error } = await supabase
             .from('profiles')
@@ -93,6 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           
           if (profile) {
+            console.log("AuthProvider: Loaded profile after sign in", profile);
             const userData: User = {
               id: profile.id,
               username: profile.username,
@@ -103,8 +118,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             setUser(userData);
             localStorage.setItem('user', JSON.stringify(userData));
+          } else {
+            console.log("AuthProvider: No profile found after sign in for user", session.user.id);
           }
         } else if (event === 'SIGNED_OUT') {
+          console.log("AuthProvider: User signed out");
           setUser(null);
           localStorage.removeItem('user');
         }
@@ -118,12 +136,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log("AuthProvider: Attempting login for", email);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
       if (error) {
+        console.error("Login error:", error.message);
         toast.error(error.message);
         return false;
       }
@@ -139,10 +159,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log("AuthProvider: Attempting registration for", email);
       // Extract username from email (before the @ symbol)
       const username = email.split('@')[0];
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -153,11 +174,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) {
+        console.error("Registration error:", error);
         toast.error(error.message);
         return false;
       }
       
-      toast.success("Account created successfully!");
+      console.log("Registration response:", data);
+      
+      // Check if email confirmation is required
+      if (data?.user?.identities && data.user.identities.length === 0) {
+        console.error("User may already exist but is not confirmed");
+        toast.error("This email may already be registered. Please check your email for confirmation or try logging in.");
+        return false;
+      }
+      
+      if (data?.user?.confirmationSentAt) {
+        toast.success("Please check your email to confirm your account!");
+      } else {
+        toast.success("Account created successfully!");
+      }
+      
       return true;
     } catch (error: any) {
       console.error("Registration error:", error);
@@ -167,9 +203,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    console.log("AuthProvider: Attempting logout");
     const { error } = await supabase.auth.signOut();
     
     if (error) {
+      console.error("Logout error:", error);
       toast.error(error.message);
       return;
     }
@@ -177,6 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     localStorage.removeItem('user');
     toast.info("Logged out");
+    console.log("AuthProvider: Logged out successfully");
   };
 
   const value = {
